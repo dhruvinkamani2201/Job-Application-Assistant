@@ -1,0 +1,28 @@
+// Rename this file to `middleware.ts` (at the project root's src/ folder)
+// to gate the whole app behind a single shared password, read from
+// APP_ACCESS_PASSWORD. Useful if you don't want to pay for Vercel's
+// built-in Deployment Protection but still want this off the open web.
+
+import { NextRequest, NextResponse } from "next/server";
+
+export function middleware(req: NextRequest) {
+  const password = process.env.APP_ACCESS_PASSWORD;
+  if (!password) return NextResponse.next(); // no password set = no gate
+
+  const provided = req.cookies.get("app_access")?.value;
+  if (provided === password) return NextResponse.next();
+
+  const url = new URL(req.url);
+  const attempt = url.searchParams.get("password");
+  if (attempt === password) {
+    const res = NextResponse.redirect(new URL(url.pathname, req.url));
+    res.cookies.set("app_access", password, { httpOnly: true, maxAge: 60 * 60 * 24 * 30 });
+    return res;
+  }
+
+  return new NextResponse("Password required. Append ?password=... to the URL once.", { status: 401 });
+}
+
+export const config = {
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"]
+};
