@@ -10,17 +10,9 @@ async function extractPdfText(buf: Buffer): Promise<string> {
   // unpdf uses a bundled serverless PDF.js build and does not require
   // a separate worker file, which avoids Next.js/Turbopack worker bundling issues.
   const pdf = await getDocumentProxy(new Uint8Array(buf))
-  try {
-    const { text } = await extractText(pdf, { mergePages: true })
-    const extractedText = Array.isArray(text) ? text.join('\n\n') : typeof text === 'string' ? text : ''
-    return extractedText
-  } finally {
-    // `PDFDocumentProxy` instances from unpdf are cleaned up via their loading task,
-    // not a direct `destroy()` method on the proxy itself.
-    if (pdf && typeof pdf.loadingTask?.destroy === 'function') {
-      await pdf.loadingTask.destroy()
-    }
-  }
+  const { text } = await extractText(pdf, { mergePages: true })
+  await pdf.destroy()
+  return typeof text === 'string' ? text : text.join('\n\n')
 }
 
 function jsonError(error: unknown, status = 500) {
